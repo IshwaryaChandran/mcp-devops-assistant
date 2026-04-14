@@ -1,31 +1,33 @@
-FROM python:3.9-slim
-WORKDIR /app
+# Stage 1: Download and install AWS CLI + kubectl
+FROM python:3.9-slim AS builder
 
-# Install dependencies
-RUN apt-get update && apt-get install -y curl unzip groff less && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
 
-# Install AWS CLI v2
+# Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip \
-    && ./aws/install --install-dir /usr/local/aws-cli --bin-dir /usr/local/bin \
+    && ./aws/install --install-dir /aws-cli-bin \
     && rm -rf awscliv2.zip aws/
-
-# Verify AWS CLI is accessible
-RUN aws --version
 
 # Install kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-    && chmod +x kubectl \
-    && mv kubectl /usr/local/bin/
+    && chmod +x kubectl
 
-# Verify kubectl is accessible
-RUN kubectl version --client
+# Stage 2: Final lean image
+FROM python:3.9-slim
 
-# Copy app
+# Copy only the built binaries from stage 1
+COPY --from=builder /aws-cli-bin /usr/local/aws-cli
+COPY --from=builder /kubectl /usr/local/bin/kubectl
+
+# Symlink aws
+RUN ln -s /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
-
-# Install Python deps
-RUN pip install -r requirements.txt
 
 EXPOSE 5000
 CMD ["python", "app.py"]
