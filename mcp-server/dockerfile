@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists
 # Install AWS CLI
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip \
-    && ./aws/install --install-dir /aws-cli-bin \
+    && ./aws/install \
     && rm -rf awscliv2.zip aws/
 
 # Install kubectl
@@ -16,12 +16,11 @@ RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/s
 # Stage 2: Final lean image
 FROM python:3.9-slim
 
-# Copy only the built binaries from stage 1
-COPY --from=builder /aws-cli-bin /usr/local/aws-cli
+# Copy AWS CLI and kubectl from builder
+COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
+COPY --from=builder /usr/local/bin/aws /usr/local/bin/aws
+COPY --from=builder /usr/local/bin/aws_completer /usr/local/bin/aws_completer
 COPY --from=builder /kubectl /usr/local/bin/kubectl
-
-# Symlink aws
-RUN ln -s /usr/local/aws-cli/v2/current/bin/aws /usr/local/bin/aws
 
 WORKDIR /app
 COPY requirements.txt .
