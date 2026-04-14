@@ -1,9 +1,10 @@
-# Stage 1: Download and install AWS CLI + kubectl
-FROM python:3.9-slim AS builder
+FROM python:3.9-slim
 
-RUN apt-get update && apt-get install -y curl unzip && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
-# Install AWS CLI
+RUN apt-get update && apt-get install -y curl unzip groff less && rm -rf /var/lib/apt/lists/*
+
+# Install AWS CLI v2
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
     && unzip awscliv2.zip \
     && ./aws/install \
@@ -11,18 +12,14 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
 
 # Install kubectl
 RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
-    && chmod +x kubectl
+    && chmod +x kubectl \
+    && mv kubectl /usr/local/bin/ \
+    && rm -f kubectl
 
-# Stage 2: Final lean image
-FROM python:3.9-slim
+# Verify both tools work
+RUN aws --version && kubectl version --client
 
-# Copy AWS CLI and kubectl from builder
-COPY --from=builder /usr/local/aws-cli /usr/local/aws-cli
-COPY --from=builder /usr/local/bin/aws /usr/local/bin/aws
-COPY --from=builder /usr/local/bin/aws_completer /usr/local/bin/aws_completer
-COPY --from=builder /kubectl /usr/local/bin/kubectl
-
-WORKDIR /app
+# Install Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
