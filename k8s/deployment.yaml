@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-devops
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-devops
+  template:
+    metadata:
+      labels:
+        app: mcp-devops
+    spec:
+      containers:
+      - name: mcp-devops
+        image: <your-docker-image>
+        ports:
+        - containerPort: 5000
